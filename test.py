@@ -115,24 +115,29 @@ def get_team_stats(df: pd.DataFrame, teams: List[str]) -> Dict[str, MatchStats]:
         ) for team in teams
     }
 
-def shots_locations(data, team):
+def shots_locations(data, team,minutes=10, half=0):
     shot_types = {
         "Shot", "Direct Free Kick Cross", "Header shot"
     }
 
     shots_list = []
+    seconds = minutes * 60
+
 
     for i in range(len(data)):
         current_event = data.iloc[i]
 
-        if current_event["Event Name"] in shot_types and current_event["Player1 Team"] == team:
+
+        if current_event["Event Name"] in shot_types and current_event["Player1 Team"] == team and current_event["Time"] <= seconds and current_event["Half"] == half:
             start_x = current_event["X"]
-            start_y = current_event["Y"]
+            start_y = - current_event["Y"] # Y vise vers le bas donc on inverse
 
             # Pour les tirs, supposons que les coordonnées d'arrivée (cible) sont le centre du but
-            if current_event["Half"] == 1:
-                start_x = - start_x
-                start_y = - start_y
+
+            # les cordonnées des buts sont exactes.
+
+
+
 
             shots_list.append({
                 "Event Name": current_event["Event Name"],
@@ -147,15 +152,10 @@ def shots_locations(data, team):
     return pd.DataFrame(shots_list)
 
 
+import numpy as np
+import plotly.graph_objects as go
+
 def create_shots_plot(shots_df):
-
-    # Transformation des coordonnées
-    shots_df['Start X'] = shots_df['Start X'] + 53
-    shots_df['Start Y'] = shots_df['Start Y'] + 34.5
-
-    shots_df['Start X'] = shots_df['Start X'] * (100 / 105.8)
-    shots_df['Start Y'] = shots_df['Start Y'] * (100 / 68)
-
     # Create the pitch figure
     fig = go.Figure()
 
@@ -191,23 +191,34 @@ def create_shots_plot(shots_df):
             layer="below"
         )
 
-    # Shot start locations
-    fig.add_trace(go.Scatter(
-        x=np.clip(shots_df['Start X'], 0, 100),
-        y=np.clip(shots_df['Start Y'], 0, 100),
-        mode='markers',
-        marker=dict(
-            size=8,
-            color=shots_df['Half'].map({1: 'yellow', 0: 'green'}),
-            opacity=0.7
-        ),
-        text=shots_df['Player1 Name'] + '<br>Half: ' + shots_df['Half'].astype(str) + '<br>Time: ' + shots_df['Time'].astype(str) + '<br>Event: ' + shots_df['Event Name'],
-        hoverinfo='text'
-    ))
+    # If shots_df is not empty, add shot markers
+    if not shots_df.empty:
+        # Transform shot coordinates
+        shots_df['Start X'] = shots_df['Start X'] + 53
+        shots_df['Start Y'] = shots_df['Start Y'] + 34.5
+
+        shots_df['Start X'] = shots_df['Start X'] * (100 / 105.8)
+        shots_df['Start Y'] = shots_df['Start Y'] * (100 / 68)
+
+        # Add shots to the plot
+        fig.add_trace(go.Scatter(
+            x=np.clip(shots_df['Start X'], 0, 100),
+            y=np.clip(shots_df['Start Y'], 0, 100),
+            mode='markers',
+            marker=dict(
+                size=8,
+                color=shots_df['Half'].map({1: 'yellow', 0: 'green'}),
+                opacity=0.7
+            ),
+            text=shots_df['Player1 Name'] + '<br>Half: ' + shots_df['Half'].astype(str) + 
+                 '<br>Time: ' + shots_df['Time'].astype(str) + 
+                 '<br>Event: ' + shots_df['Event Name'],
+            hoverinfo='text'
+        ))
 
     # Update layout for visualization
     fig.update_layout(
-        title='Shot Locations',
+        title='Shot Locations' if not shots_df.empty else 'Empty Stadium - No Shots',
         xaxis=dict(
             range=[0, 100],
             showgrid=False,
@@ -230,7 +241,8 @@ def create_shots_plot(shots_df):
 
     return fig
 
-def passes_locations(data, team):
+
+def passes_locations(data, team,minutes=10, half=0):
     pass_types = {
         "Pass", "Cross"
     }
@@ -241,7 +253,7 @@ def passes_locations(data, team):
         current_event = data.iloc[i]
         next_event = data.iloc[i + 1]
         
-        if current_event["Event Name"] in pass_types and current_event["Player1 Team"] == team and current_event["Possession Loss"] == False:
+        if current_event["Event Name"] in pass_types and current_event["Player1 Team"] == team and current_event["Possession Loss"] == False and current_event["Half"] == half and current_event["Time"] <= minutes * 60:
 
             start_x = current_event["X"]
             start_y = current_event["Y"]
@@ -365,11 +377,12 @@ def create_pitch_plot(passes_df):
     )
 
     return fig
-
+def get_max_minute(data,half):
+    return int(data[data["Half"]==half].iloc[-1]["Time"] / 60) + 1
 
 st.title("Team Performance Analysis")
 
-EVENTS_PATH = "C:/Users/remis/Documents/L3/projet/EPL_2011-12/Events"
+EVENTS_PATH = "Events"
 
 try:
     match_files = load_match_files(EVENTS_PATH)
@@ -405,14 +418,23 @@ try:
     # Choisir entre les tirs et les passes pour la visualisation
     data_choice = st.radio("Choose Data to Visualize", ["Shots", "Passes"])
 
+
+    half_choice = st.radio("Choose Half", [1, 2])
+
+    max_minute = get_max_minute(df,half_choice-1)
+    selected_minute = st.slider("Select Time zone", 0,max_minute,1)  # Default is 90 (full match)
+
+
     if data_choice == "Shots":
-        shots_df = shots_locations(df, selected_team)
+        shots_df = shots_locations(df, selected_team,selected_minute,half_choice - 1)
         pitch_plot = create_shots_plot(shots_df)
     else:
-        passes_df = passes_locations(df, selected_team)
+        passes_df = passes_locations(df, selected_team,selected_minute,half_choice - 1)
         pitch_plot = create_pitch_plot(passes_df)
 
     st.plotly_chart(pitch_plot, use_container_width=True)
+
+
 
     if st.checkbox("Show Raw Data"):
         st.dataframe(
