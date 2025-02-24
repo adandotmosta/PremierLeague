@@ -59,16 +59,24 @@ class PitchVisualizer:
         fig = self._create_base_pitch()
 
         if not shots_df.empty:
-            # Normaliser les coordonnées
-            shots_df['norm_x'], shots_df['norm_y'] = zip(*[
-                self._normalize_coordinates(row['Start X'], row['Start Y'])
-                for _, row in shots_df.iterrows()
-            ])
+            for _, row in shots_df.iterrows():
+                # Normaliser les coordonnées
+                start_x, start_y = self._normalize_coordinates(row['X'], row['Y'])
+                end_x, end_y = self._normalize_coordinates(row['end_x'], row['end_y'])
 
-            # Ajouter les marqueurs de tirs
+                # Ajouter la trajectoire du tir
+                fig.add_trace(go.Scatter(
+                    x=[start_x, end_x],
+                    y=[start_y, end_y],
+                    mode='lines',
+                    line=dict(width=2, color='white'),
+                    hoverinfo='none'
+                ))
+
+            # Ajouter les points des tirs
             fig.add_trace(go.Scatter(
-                x=shots_df['norm_x'],
-                y=shots_df['norm_y'],
+                x=[self._normalize_coordinates(row['X'], row['Y'])[0] for _, row in shots_df.iterrows()],
+                y=[self._normalize_coordinates(row['X'], row['Y'])[1] for _, row in shots_df.iterrows()],
                 mode='markers',
                 marker=dict(
                     size=8,
@@ -76,8 +84,8 @@ class PitchVisualizer:
                     opacity=0.7
                 ),
                 text=shots_df['Player1 Name'] + '<br>Half: ' + shots_df['Half'].astype(str) +
-                     '<br>Time: ' + shots_df['Time'].astype(str) +
-                     '<br>Event: ' + shots_df['Event Name'],
+                    '<br>Time: ' + shots_df['Time'].astype(str) +
+                    '<br>Event: ' + shots_df['Event Name'],
                 hoverinfo='text'
             ))
 
@@ -91,8 +99,8 @@ class PitchVisualizer:
         if not passes_df.empty:
             for _, row in passes_df.iterrows():
                 # Normaliser les coordonnées de début et fin
-                start_x, start_y = self._normalize_coordinates(row['Start X'], row['Start Y'])
-                end_x, end_y = self._normalize_coordinates(row['End X'], row['End Y'])
+                start_x, start_y = self._normalize_coordinates(row['X'], row['Y'])
+                end_x, end_y = self._normalize_coordinates(row['end_x'], row['end_y'])
 
                 # Ajouter la flèche de la passe
                 fig.add_trace(go.Scatter(
@@ -105,8 +113,8 @@ class PitchVisualizer:
 
             # Ajouter les points de départ des passes
             fig.add_trace(go.Scatter(
-                x=[self._normalize_coordinates(row['Start X'], row['Start Y'])[0] for _, row in passes_df.iterrows()],
-                y=[self._normalize_coordinates(row['Start X'], row['Start Y'])[1] for _, row in passes_df.iterrows()],
+                x=[self._normalize_coordinates(row['X'], row['Y'])[0] for _, row in passes_df.iterrows()],
+                y=[self._normalize_coordinates(row['X'], row['Y'])[1] for _, row in passes_df.iterrows()],
                 mode='markers',
                 marker=dict(
                     size=7,
