@@ -74,16 +74,40 @@ class DataProcessor:
         }
 
     def get_events_by_time(self, data: pd.DataFrame, team: str, 
-                          event_types: set, minutes: int = 90, 
-                          half: int = 0) -> pd.DataFrame:
-        """Filtre les événements par équipe, type et temps."""
+                      event_types: set, minutes: int = 90, 
+                      half: int = 0) -> pd.DataFrame:
         seconds = minutes * 60
-        return data[
-            (data["Event Name"].isin(event_types)) & 
-            (data["Player1 Team"] == team) & 
-            (data["Time"] <= seconds) & 
-            (data["Half"] == half)
-        ]
+        
+        # D'abord, on trie le DataFrame complet par temps
+        data_sorted = data.sort_values(["Half", "Time"])
+        
+        # On ajoute un index qui nous servira à trouver l'événement suivant
+        data_sorted = data_sorted.reset_index(drop=True)
+        
+        # Filtrer les événements selon les critères
+        mask = (
+            (data_sorted["Event Name"].isin(event_types)) & 
+            (data_sorted["Player1 Team"] == team) & 
+            (data_sorted["Time"] <= seconds) & 
+            (data_sorted["Half"] == half)
+        )
+        
+        # Obtenir les indices des événements qui nous intéressent
+        filtered_indices = data_sorted[mask].index
+        
+        # Créer le DataFrame filtré
+        filtered_df = data_sorted.loc[filtered_indices].copy()
+        
+        # Pour chaque événement filtré, trouver les coordonnées du prochain événement
+        # dans le jeu de données complet
+        filtered_df["end_x"] = filtered_indices.map(
+            lambda idx: data_sorted.loc[idx + 1, "X"] if idx + 1 in data_sorted.index else data_sorted.loc[idx, "X"]
+        )
+        filtered_df["end_y"] = filtered_indices.map(
+            lambda idx: data_sorted.loc[idx + 1, "Y"] if idx + 1 in data_sorted.index else data_sorted.loc[idx, "Y"]
+        )
+        
+        return filtered_df
 
     def get_max_minute(self, data: pd.DataFrame, half: int) -> int:
         """Calcule la dernière minute de jeu pour une mi-temps donnée."""
