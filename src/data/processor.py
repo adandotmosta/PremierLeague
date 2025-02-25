@@ -8,6 +8,7 @@ class MatchStats:
     passes: int
     possession_loss: int
     successful_passes: int
+    score : int
 
     @property
     def successful_passes_rate(self) -> float:
@@ -18,7 +19,8 @@ class MatchStats:
             "shots": self.shots,
             "passes": self.passes,
             "possession_loss": self.possession_loss,
-            "successful_passes_rate": self.successful_passes_rate
+            "successful_passes_rate": self.successful_passes_rate,
+            "score" : self.score
         }
 
 class DataProcessor:
@@ -69,7 +71,8 @@ class DataProcessor:
                 shots=self.calculate_shots(data, team),
                 passes=self.calculate_passes(data, team),
                 possession_loss=self.calculate_possession_loss(data, team),
-                successful_passes=self.calculate_successful_passes(data, team)
+                successful_passes=self.calculate_successful_passes(data, team),
+                score = self.calculate_final_score(data, team)
             ) for team in teams
         }
 
@@ -112,3 +115,6 @@ class DataProcessor:
     def get_max_minute(self, data: pd.DataFrame, half: int) -> int:
         """Calcule la dernière minute de jeu pour une mi-temps donnée."""
         return int(data[data["Half"] == half].iloc[-1]["Time"] / 60) + 1
+    
+    def calculate_final_score(self, data: pd.DataFrame, team):
+        return len(data[(data["Event Name"]=="Goal") & (data["Player1 Team"] == team)])
