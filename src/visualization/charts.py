@@ -12,6 +12,8 @@ class ChartCreator:
         # Préparer les données
         teams = list(stats_data.keys())
         metrics = list(stats_data[teams[0]].keys())
+        metrics.pop()
+        metrics.reverse()
 
         fig = go.Figure()
 
@@ -21,10 +23,10 @@ class ChartCreator:
 
             fig.add_trace(go.Bar(
                 y=[metric] * len(teams),
-                x=[-val/2 if i == 0 else val/2 for i, val in enumerate(normalized_values)],
+                x=[-val if i == 0 else val for i, val in enumerate(values)],
                 name=metric,
                 orientation='h',
-                marker=dict(color=['blue', 'red']),
+                marker=dict(color=['green', 'red']),
                 text=[f"{team}: {values[i]:.1f}" for i, team in enumerate(teams)],
                 textposition='inside'
             ))
@@ -41,10 +43,8 @@ class ChartCreator:
         """Met à jour la mise en page du graphique centré."""
         fig.update_layout(
             title="Team Statistics Comparison",
-            xaxis_title="Normalized Count",
             yaxis_title=None,
             xaxis=dict(
-                range=[-50, 50],
                 zeroline=True,
                 zerolinecolor="black",
                 zerolinewidth=2,
@@ -59,5 +59,5 @@ class ChartCreator:
             template="plotly",
             height=self.default_height,
             width=self.default_width,
-            legend=dict(orientation="h", y=-0.2, xanchor="center", x=0.5)
+            legend=dict(bordercolor="black", orientation="h", y=-0.2, xanchor="center", x=0.5),
         )

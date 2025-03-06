@@ -15,17 +15,25 @@ class DataLoader:
             if f.endswith('.csv')
         ])
     
-    def load_logos(self, team_name: str):
+    def load_logos(self, team_name):
         """Charge le logo de l'équipe spécifiée."""
-        file_path = os.path.join(self.logos_directory, team_name + ".jpg")
-        img = cv2.imread(file_path)
+        # Convert team_name to string to handle potential float inputs
+        team_name_str = str(team_name)
         
-        if img is not None:
-            # Convertir BGR en RGB pour Streamlit
-            return cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-        return None
-    
-
+        file_path = os.path.join(self.logos_directory, team_name_str + ".jpg")
+        
+        try:
+            img = cv2.imread(file_path)
+            
+            if img is not None:
+                # Convertir BGR en RGB pour Streamlit
+                return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            else:
+                print(f"Logo not found for team: {team_name_str}")
+                return None
+        except Exception as e:
+            print(f"Error loading logo for {team_name_str}: {e}")
+            return None
 
     def load_match_data(self, file_name: str) -> pd.DataFrame:
         """Charge les données d'un match spécifique."""
@@ -34,4 +42,5 @@ class DataLoader:
 
     def get_teams(self, data: pd.DataFrame) -> List[str]:
         """Récupère la liste des équipes du match."""
-        return data["Player1 Team"].unique().tolist()
+        teams = [data['Team A'][0], data['Team B'][0]]
+        return teams

@@ -30,6 +30,7 @@ try:
     teams = loader.get_teams(df)
     logo_team1 = loader.load_logos(teams[0])
     logo_team2 = loader.load_logos(teams[1])
+    
 
     # Calcul des statistiques
     team_stats = processor.get_team_stats(df, teams)
@@ -98,42 +99,111 @@ try:
     stats_chart = chart_creator.create_centered_bar_chart(stats_data)
     st.plotly_chart(stats_chart, use_container_width=True)
     
-    # Sélection de l'équipe
-    selected_team = st.selectbox("Select Team", teams)
+    # Chargement des effectifs
+    players = processor.get_players(df, teams)
+    # Séparation des joueurs en deux tableaux
+    team1, team2 = players.columns
+    players_team1 = players[[team1]].dropna()
+    players_team2 = players[[team2]].dropna()
+
+    # Séparation en titulaires et remplaçants
+    Team1_titu = players_team1.head(11)
+    Team2_titu = players_team2.head(11)
+    Team1_sub = players_team1.iloc[11:]
+    Team2_sub = players_team2.iloc[11:]
+
+    # Sélection des joueurs avec checkboxes en affichant les équipes en parallèle
+    selected_players = []
+
+    col1, col2, col3 = st.columns([1, 2, 1], border=True)
+
+    with col1:
+
+        st.write(f"## {team1}")
+
+        team1_selections = []
+
+        # Checkbox pour sélectionner toute l'équipe
+        select_all_team1 = st.checkbox(f"Sélectionner toute l'équipe.", key=f"{team1}select_all")
+        
+        with st.container(border=True):
+
+            st.write(f"### Titulaires")
+
+            for player in Team1_titu[team1].dropna():
+                if st.checkbox(player, key=f"{team1}_titu_{player}"):
+                    team1_selections.append(player)
+            
+            st.write(f"### Remplaçants")
+            for player in Team1_sub[team1].dropna():
+                if st.checkbox(player, key=f"{team1}_sub_{player}"):
+                    team1_selections.append(player)
+
+            if select_all_team1:
+                all_team1_players = list(Team1_titu[team1].dropna()) + list(Team1_sub[team1].dropna())
+                for player in all_team1_players:
+                    if player not in team1_selections:
+                        team1_selections.append(player)
     
-    # Choix du type de données à visualiser
-    data_choice = st.radio("Choose Data to Visualize", ["Shots", "Passes"])
+    with col3:
+        st.write(f"## {team2}")
+
+        team2_selections = []
+        
+        # Checkbox pour sélectionner toute l'équipe
+        select_all_team2 = st.checkbox(f"Sélectionner toute l'équipe.", key=f"{team2}select_all")
+        
+        with st.container(border=True):
+            st.write(f"### Titulaires")
+
+            for player in Team2_titu[team2].dropna():
+                player_selected = st.checkbox(player, key=f"{team2}_titu_{player}", value=select_all_team2)
+                if player_selected and player not in team2_selections:
+                    team2_selections.append(player)
+            
+            st.write(f"### Remplaçants")
+            for player in Team2_sub[team2].dropna():
+                player_selected = st.checkbox(player, key=f"{team2}_sub_{player}", value=select_all_team2)
+                if player_selected and player not in team2_selections:
+                    team2_selections.append(player)
+
+            if select_all_team2:
+                all_team2_players = list(Team2_titu[team2].dropna()) + list(Team2_sub[team2].dropna())
+                for player in all_team2_players:
+                    if player not in team2_selections:
+                        team2_selections.append(player)
     
-    # Sélection de la mi-temps
-    half_choice = st.radio("Choose Half", [1, 2])
+    selected_players = (team1_selections + team2_selections)
+
+    with col2:
+
+        # Selection de la visualisation
+        data_choice = st.selectbox("Choose Data to Visualize", ["Shots", "Passes", "Activity map"])
+        
+        # Calcul et sélection de la plage de temps
+        max_minute = processor.get_max_minute(df)
+        print(max_minute)
+        selected_minute = st.slider("Select Time zone", 0, max_minute, 1)
+
+        # Création de la visualisation du terrain
+        pitch_viz = PitchVisualizer()
+
+        events_type = processor.get_events_types(data_choice)
+        
+        if data_choice in (['Shots', 'Passes']):
+            filtered_events = processor.get_events_vector_by_time(
+                df, selected_players, events_type,
+                selected_minute
+            )
+            pitch_plot = pitch_viz.create_vector_plot(filtered_events, data_choice)
+        else :
+            filtered_events = processor.get_events_point_by_time(
+                df, selected_players, events_type,
+                selected_minute
+            )    
+            pitch_plot = pitch_viz.create_point_plot(filtered_events, data_choice)
     
-    # Calcul et sélection de la plage de temps
-    max_minute = processor.get_max_minute(df, half_choice-1)
-    selected_minute = st.slider("Select Time zone", 0, max_minute, 1)
-    
-    # Création de la visualisation du terrain
-    pitch_viz = PitchVisualizer()
-    if data_choice == "Shots":
-        filtered_events = processor.get_events_by_time(
-            df, selected_team, processor.shot_types, 
-            selected_minute, half_choice - 1
-        )
-        pitch_plot = pitch_viz.create_shots_plot(filtered_events)
-    else:
-        filtered_events = processor.get_events_by_time(
-            df, selected_team, processor.pass_types, 
-            selected_minute, half_choice - 1
-        )
-        pitch_plot = pitch_viz.create_passes_plot(filtered_events)
-    
-    st.plotly_chart(pitch_plot, use_container_width=True)
-    
-    # Affichage des données brutes si demandé
-    if st.checkbox("Show Raw Data"):
-        st.dataframe(
-            df[["Event Name", "Player1 Team", "Possession Loss"]]
-            .style.highlight_null()
-        )
+        st.plotly_chart(pitch_plot, use_container_width=True)
 
 except Exception as e:
     st.error(f"Error occurred: {str(e)}")
