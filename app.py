@@ -183,7 +183,7 @@ try:
         # Calcul et sélection de la plage de temps
         max_minute = processor.get_max_minute(df)
         print(max_minute)
-        selected_minute = st.slider("Select Time zone", 0, max_minute, 1)
+        strea
 
         # Création de la visualisation du terrain
         pitch_viz = PitchVisualizer()
