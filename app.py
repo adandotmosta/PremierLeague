@@ -1,6 +1,7 @@
 import streamlit as st
 from src.data.loader import DataLoader
 from src.data.processor import DataProcessor
+from src.data.playersLoader import PlayerLoader
 from src.visualization.pitch import PitchVisualizer  
 from src.visualization.charts import ChartCreator    
 
@@ -9,27 +10,29 @@ st.set_page_config(page_title="Match Analysis", layout="wide")
 st.title("Team Performance Analysis")
 
 # Initialisation des classes
-EVENTS_PATH = "Events"
-LOGOS_PATH = "Logos"
-loader = DataLoader(EVENTS_PATH, LOGOS_PATH)
+EVENTS_PATH = "../Events"
+LOGOS_PATH = "../Logos"
+PLAYERS_PATH = "../Players"
+events_loader = DataLoader(EVENTS_PATH, LOGOS_PATH)
+players_loader = PlayerLoader(PLAYERS_PATH)
 processor = DataProcessor()
 
 try:
     # Chargement des matches disponibles
-    match_files = loader.load_match_files()
+    match_files = events_loader.load_match_files()
     
     # Sélection du match
     selected_match = st.selectbox(
         "Select Match",
-        match_files,
-        format_func=lambda x: x.replace('.csv', '')
+        match_files
     )
     
     # Chargement des données du match sélectionné
-    df = loader.load_match_data(selected_match)
-    teams = loader.get_teams(df)
-    logo_team1 = loader.load_logos(teams[0])
-    logo_team2 = loader.load_logos(teams[1])
+    df = events_loader.load_match_data(selected_match + "- Events.csv")
+    df_players = players_loader.load_player_data(selected_match + "- Players.csv")
+    teams = events_loader.get_teams(df)
+    logo_team1 = events_loader.load_logos(teams[0])
+    logo_team2 = events_loader.load_logos(teams[1])
     
 
     # Calcul des statistiques
@@ -98,6 +101,55 @@ try:
     chart_creator = ChartCreator()
     stats_chart = chart_creator.create_centered_bar_chart(stats_data)
     st.plotly_chart(stats_chart, use_container_width=True)
+
+    # Get goal scorers for each team
+    goal_scorers_team1 = processor.get_goal_scorers(df_players, df, teams[0])
+    goal_scorers_team2 = processor.get_goal_scorers(df_players, df, teams[1])
+
+    # Header for Goal Scorers
+    st.markdown("<h2 style='text-align: center; font-weight: bold;'>🎯 Goal Scorers</h2>", unsafe_allow_html=True)
+
+    # Create two columns for the teams
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown(f"<h3 style='text-align: center; color: #3498db;'>{teams[0]}</h3>", unsafe_allow_html=True)
+        if goal_scorers_team1:
+            for scorer in goal_scorers_team1:
+                # Create a formatted string for the goal times
+                goal_times = ', '.join([f"{int(goal_time)}'" for goal_time in scorer[1]])
+                st.markdown(f"""
+                    <div style="
+                        background-color: #ecf0f1; padding: 10px; margin: 5px 0; border-radius: 10px;
+                        text-align: center;
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #2c3e50;">
+                        {scorer[0]}: {goal_times}
+                    </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown("<p style='text-align: center; font-style: italic; color: gray;'>No goals</p>", unsafe_allow_html=True)
+
+    with col2:
+        st.markdown(f"<h3 style='text-align: center; color: #e74c3c;'>{teams[1]}</h3>", unsafe_allow_html=True)
+        if goal_scorers_team2:
+            for scorer in goal_scorers_team2:
+                # Create a formatted string for the goal times
+                goal_times = ', '.join([f"{int(goal_time)}'" for goal_time in scorer[1]])
+                st.markdown(f"""
+                    <div style="
+                        background-color: #ecf0f1; padding: 10px; margin: 5px 0; border-radius: 10px;
+                        text-align: center;
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #2c3e50;">
+                        {scorer[0]}: {goal_times}
+                    </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.markdown("<p style='text-align: center; font-style: italic; color: gray;'>No goals</p>", unsafe_allow_html=True)
+
     
     # Chargement des effectifs
     players = processor.get_players(df, teams)

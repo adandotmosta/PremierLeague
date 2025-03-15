@@ -11,8 +11,8 @@ class DataLoader:
     def load_match_files(self) -> List[str]:
         """Liste tous les fichiers CSV dans le répertoire des événements."""
         return sorted([
-            f for f in os.listdir(self.events_directory) 
-            if f.endswith('.csv')
+            f.replace("- Players.csv", "").replace("- Events.csv", "") 
+            for f in os.listdir(self.events_directory) if f.endswith('.csv')
         ])
     
     def load_logos(self, team_name):

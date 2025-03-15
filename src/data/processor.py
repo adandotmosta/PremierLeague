@@ -225,3 +225,61 @@ class DataProcessor:
 
 
 
+
+
+    def get_goal_scorers(self, players: pd.DataFrame, match: pd.DataFrame, team: str) -> List[tuple]:
+        """Récupère les noms des joueurs ayant marqué un but et le nombre de buts."""
+        
+        # Filter players who scored goals for the given team
+        scorers = players[
+            (players["Goals"] > 0) & 
+            (players["Team"] == team)
+        ][["Player Name"]].values.tolist()
+
+        returned_tuples = []
+
+        for scorer in scorers:
+            # Find the goal events for the scorer
+            goal_minutes = match[
+                (match["Player1 Name"] == scorer[0]) & 
+                (match["Event Name"] == "Goal")
+            ][["Time", "Half"]].values.tolist()
+
+            minutes = []
+            
+            for goal in goal_minutes:
+                # Adjust time based on half
+                goal_time = goal[0]/60 if goal[1] == 0 else goal[0]/60 + 45
+                minutes.append(goal_time)
+                
+            returned_tuples.append((scorer[0], minutes))
+
+        returned_tuples.sort(key=lambda x: x[1][0])
+        
+        return returned_tuples
+
+
+    def get_top_scorers_yearly(self, players: pd.DataFrame,top_n : 10) -> List[tuple]:
+        """Récupère les noms des joueurs ayant marqué le plus de buts par année.""" 
+        # Filter players who scored goals for the given team
+        return
+
+
+    def Missed_oppurtunities(self, match: pd.DataFrame, team: str) -> List[tuple]:
+        # filter if there is a post shot
+        # if there is shot with a high XgG but no goal after it, it is a missed oppurtunity
+        # return the player name and the time of the missed oppurtunity and label(missed shot)
+        #if there is post look before it if there is a shot, then return the player name and the time of the post shot and label(post shot)
+        # penalty = xg higher than 0.7
+        # shot inside the box = xg higher than 0.5
+
+        missed_oppurtunities = match[
+            (match["Event Name"] == "Shot") & 
+            (match["Player1 Team"] == team) & 
+            (match["Goal"] == False) &
+            (match["XgG"] > 0.3)
+        ][["Player1 Name", "Time"]].values.tolist()
+
+
+
+
