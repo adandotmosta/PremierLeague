@@ -57,3 +57,23 @@ class PlayerLoader:
         """Récupère la liste des joueurs d'une équipe spécifique."""
         return data[data["Team"] == team_name]["Player Name"].unique().tolist()
 
+
+    def get_stats_per_team(self, team: str) -> pd.DataFrame:
+        """Récupère les statistiques d'une équipe spécifique."""
+        players = {}
+        wins = 0
+        for match in self.load_match_files():
+            if team in match : 
+                data = self.load_player_data(match + "- Players.csv")
+                team_data = data[data['Team'] == team]
+                if team_data.iloc[0]['Result'] == 'W':
+                    wins += 1
+                for _, player in team_data.iterrows():
+                    player_name = player['Player Name']
+                    goals = player['Goals']
+                    if player_name in players:
+                        players[player_name] += goals
+                    else:
+                        players[player_name] = goals
+        return pd.DataFrame(players.items(), columns=['Player', 'Goals']).sort_values(by='Goals', ascending=False), wins
+

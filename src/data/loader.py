@@ -44,3 +44,5 @@ class DataLoader:
         """Récupère la liste des équipes du match."""
         teams = [data['Team A'][0], data['Team B'][0]]
         return teams
+    
+    

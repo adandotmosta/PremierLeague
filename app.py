@@ -10,9 +10,9 @@ st.set_page_config(page_title="Match Analysis", layout="wide")
 st.title("Team Performance Analysis")
 
 # Initialisation des classes
-EVENTS_PATH = "../Events"
-LOGOS_PATH = "../Logos"
-PLAYERS_PATH = "../Players"
+EVENTS_PATH = "../EPL 2011-12/Events"
+LOGOS_PATH = "../EPL 2011-12/Logos"
+PLAYERS_PATH = "../EPL 2011-12/Players"
 events_loader = DataLoader(EVENTS_PATH, LOGOS_PATH)
 players_loader = PlayerLoader(PLAYERS_PATH)
 processor = DataProcessor()

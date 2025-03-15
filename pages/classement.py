@@ -6,8 +6,9 @@ import numpy as np
 import cv2
 from src.data.playersLoader import PlayerLoader
 
-EVENTS_PATH = "../Events"
-LOGOS_PATH = "../Logos"
+EVENTS_PATH = "../EPL 2011-12/Events"
+LOGOS_PATH = "../EPL 2011-12/Logos"
+PLAYERS_PATH = "../EPL 2011-12/Players"
 TOTAL_MJ = 38
 TEAM_NB = 20
 
@@ -50,8 +51,6 @@ ranking = pd.DataFrame(dict)
 st.table(ranking)
 
 
-# Initialisation des classes
-PLAYERS_PATH = "../Players"
 players_loader = PlayerLoader(PLAYERS_PATH)
 try:
     top_scorers = players_loader.get_top_scorers_yearly(10)
