@@ -171,7 +171,7 @@ class PitchVisualizer:
                 opacity=0.7
             ),
             text=hover_texts,
-            hoverinfo='text'
+            hoverinfo='text',
         ))
         
         self._update_layout(fig, title + ' Locations')
@@ -198,5 +198,6 @@ class PitchVisualizer:
             width=800,
             height=600,
             plot_bgcolor='green',
-            paper_bgcolor='white'
+            paper_bgcolor='white',
+            showlegend=False
         )
