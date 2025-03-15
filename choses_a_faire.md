@@ -1,7 +1,7 @@
 Objectifs :
 
 merge
-Deploiement
+Deploiement OK
 commencer rapport
 
 Page de match :
@@ -9,9 +9,9 @@ Page de match :
 barre a normailser
 légende barre
 heatmap d'activité
-coordonnées mi-temps
-check box équipe
-enlever trace
+coordonnées mi-temps OK
+check box équipe OK
+enlever trace OK
 
 Page de classement :
 
