@@ -6,8 +6,8 @@ commencer rapport
 
 Page de match :
 
-barre a normailser
-légende barre
+barre a normailser OK
+légende barre Ok
 heatmap d'activité
 coordonnées mi-temps OK
 check box équipe OK
