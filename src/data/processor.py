@@ -6,7 +6,6 @@ from dataclasses import dataclass
 class MatchStats:
     shots: int
     passes: int
-    possession_loss: int
     successful_passes: int
     saves : int
     score : int
@@ -19,11 +18,20 @@ class MatchStats:
         return {
             "shots": self.shots,
             "passes": self.passes,
-            "possession_loss": self.possession_loss,
             "successful_passes_rate": self.successful_passes_rate,
             "saves" : self.saves,
             "score" : self.score
         }
+    
+class MatchStatsRanking:
+    points : int
+    wins : int
+    draw : int
+    lose : int
+    bp : int
+    bc : int
+    db : int
+    mj : int
 
 class DataProcessor:
     def __init__(self):
@@ -98,7 +106,6 @@ class DataProcessor:
             team: MatchStats(
                 shots=self.calculate_shots(data, team),
                 passes=self.calculate_passes(data, team),
-                possession_loss=self.calculate_possession_loss(data, team),
                 successful_passes=self.calculate_successful_passes(data, team),
                 saves=self.calculate_saves(data, team),
                 score = self.calculate_final_score(data, team)
@@ -114,11 +121,11 @@ class DataProcessor:
         
         # Ajuster le temps pour que la 2ème mi-temps continue après la 1ère
         # Trouver le temps maximum de la 1ère mi-temps
-        if 1 in data_copy["Half"].unique() and 2 in data_copy["Half"].unique():
-            max_time_first_half = data_copy[data_copy["Half"] == 1]["Time"].max()
+        if 0 in data_copy["Half"].unique() and 1 in data_copy["Half"].unique():
+            max_time_first_half = data_copy[data_copy["Half"] == 0]["Time"].max()
             
             # Ajouter ce temps à toutes les valeurs de la 2ème mi-temps
-            data_copy.loc[data_copy["Half"] == 2, "Time"] = data_copy.loc[data_copy["Half"] == 2, "Time"] + max_time_first_half
+            data_copy.loc[data_copy["Half"] == 1, "Time"] = data_copy.loc[data_copy["Half"] == 1, "Time"] + max_time_first_half
         
         # Trier le DataFrame par temps ajusté
         data_sorted = data_copy.sort_values("Time")
@@ -211,7 +218,6 @@ class DataProcessor:
         players_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in result.items()]))
         
         return players_df
-
 
 
 
