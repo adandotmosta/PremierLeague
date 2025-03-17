@@ -118,25 +118,25 @@ try:
     col1, col2, col3 = st.columns([1, 2, 1], border=True)
 
     with col1:
-
         st.write(f"## {team1}")
 
         team1_selections = []
-
+        
         # Checkbox pour sélectionner toute l'équipe
         select_all_team1 = st.checkbox(f"Sélectionner toute l'équipe.", key=f"{team1}select_all")
         
         with st.container(border=True):
-
             st.write(f"### Titulaires")
 
             for player in Team1_titu[team1].dropna():
-                if st.checkbox(player, key=f"{team1}_titu_{player}"):
+                player_selected = st.checkbox(player, key=f"{team1}_titu_{player}", value=select_all_team1)
+                if player_selected and player not in team1_selections:
                     team1_selections.append(player)
             
             st.write(f"### Remplaçants")
             for player in Team1_sub[team1].dropna():
-                if st.checkbox(player, key=f"{team1}_sub_{player}"):
+                player_selected = st.checkbox(player, key=f"{team1}_sub_{player}", value=select_all_team1)
+                if player_selected and player not in team1_selections:
                     team1_selections.append(player)
 
             if select_all_team1:
@@ -182,8 +182,7 @@ try:
         
         # Calcul et sélection de la plage de temps
         max_minute = processor.get_max_minute(df)
-        print(max_minute)
-        strea
+        selected_minute = st.slider("Select minute",0, max_minute)
 
         # Création de la visualisation du terrain
         pitch_viz = PitchVisualizer()
@@ -195,13 +194,13 @@ try:
                 df, selected_players, events_type,
                 selected_minute
             )
-            pitch_plot = pitch_viz.create_vector_plot(filtered_events, data_choice)
+            pitch_plot = pitch_viz.create_vector_plot(filtered_events, data_choice, teams)
         else :
             filtered_events = processor.get_events_point_by_time(
                 df, selected_players, events_type,
                 selected_minute
             )    
-            pitch_plot = pitch_viz.create_point_plot(filtered_events, data_choice)
+            pitch_plot = pitch_viz.create_point_plot(filtered_events, data_choice, teams)
     
         st.plotly_chart(pitch_plot, use_container_width=True)
 
