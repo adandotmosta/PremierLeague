@@ -62,69 +62,118 @@ class PitchVisualizer:
         norm_y = (y + 34.5) * (self.pitch_height / self.real_pitch_height)
         return np.clip(norm_x, 0, 100), np.clip(norm_y, 0, 100)
     
-    def create_vector_plot(self, df: pd.DataFrame, title: str) -> go.Figure:
+    def create_vector_plot(self, df: pd.DataFrame, title: str, teams) -> go.Figure:
         fig = self._create_base_pitch()
-        if not df.empty:
-            for _, row in df.iterrows():
-                # Normaliser les coordonnées
-                start_x, start_y = self._normalize_coordinates(row['X'], row['Y'])
-                end_x, end_y = self._normalize_coordinates(row['end_x'], row['end_y'])
-
-                # Ajouter la trajectoire
-                fig.add_trace(go.Scatter(
-                    x=[start_x, end_x],
-                    y=[start_y, end_y],
-                    mode='lines+markers',
-                    line=dict(width=2, color='white'),
-                    marker=dict(
-                        symbol="arrow",
-                        size=15,
-                        angleref="previous",
-                    ),
-                    hoverinfo='none'
-                ))
-
-                # Ajouter les points de départ
-                fig.add_trace(go.Scatter(
-                    x=[self._normalize_coordinates(row['X'], row['Y'])[0] for _, row in df.iterrows()],
-                    y=[self._normalize_coordinates(row['X'], row['Y'])[1] for _, row in df.iterrows()],
-                    mode='markers',
-                    marker=dict(
-                        size=8,
-                        color=df['Half'].map({1: 'yellow', 0: 'green'}),
-                        opacity=0.7
-                    ),
-                    text=df['Player1 Name'] + '<br>Half: ' + df['Half'].astype(str) +
-                        '<br>Time: ' + df['Time'].astype(str) +
-                        '<br>Event: ' + df['Event Name'],
-                    hoverinfo='text'
-                ))
+        
+        if df.empty:
+            self._update_layout(fig, title + ' Locations')
+            return fig
+        
+        # Préparation des données pour l'affichage
+        vectors = []
+        start_points = []
+        hover_texts = []
+        colors = []
+        
+        for _, row in df.iterrows():
+            # Normaliser les coordonnées originales
+            start_x, start_y = self._normalize_coordinates(row['X'], row['Y'])
+            end_x, end_y = self._normalize_coordinates(row['end_x'], row['end_y'])
+            
+            # Inverser les coordonnées si les événements sont effectués en deuxième mi-temps
+            if row['Half'] == 1:
+                # Pour une inversion correcte, nous devons ajuster par rapport au centre du terrain
+                start_x = 100 - start_x  # Miroir horizontal (axe central à x=50)
+                start_y = 100 - start_y  # Miroir vertical (axe central à y=50)
+                end_x = 100 - end_x
+                end_y = 100 - end_y
+            
+            # Ajouter aux listes pour l'affichage
+            vectors.append((start_x, start_y, end_x, end_y))
+            start_points.append((start_x, start_y))
+            hover_texts.append(
+                f"{row['Player1 Name']}"
+            )
+            colors.append('red' if row['Player1 Team'] == teams[1] else 'green')
+        
+        # Tracer les vecteurs (flèches)
+        for start_x, start_y, end_x, end_y in vectors:
+            fig.add_trace(go.Scatter(
+                x=[start_x, end_x],
+                y=[start_y, end_y],
+                mode='lines+markers',
+                line=dict(width=2, color='white'),
+                marker=dict(
+                    symbol="arrow",
+                    size=15,
+                    angleref="previous",
+                ),
+                hoverinfo='none'
+            ))
+        
+        # Ajouter tous les points de départ en une seule trace
+        fig.add_trace(go.Scatter(
+            x=[point[0] for point in start_points],
+            y=[point[1] for point in start_points],
+            mode='markers',
+            marker=dict(
+                size=8,
+                color=colors,
+                opacity=0.7
+            ),
+            text=hover_texts,
+            hoverinfo='text'
+        ))
+        
         self._update_layout(fig, title + ' Locations')
         return fig
     
-    def create_point_plot(self, df: pd.DataFrame, title: str) -> go.Figure:
+    def create_point_plot(self, df: pd.DataFrame, title: str, teams) -> go.Figure:
         fig = self._create_base_pitch()
-        if not df.empty:
-            # Normaliser les coordonnées une seule fois pour tout le DataFrame
-            normalized_coords = [self._normalize_coordinates(row['X'], row['Y']) for _, row in df.iterrows()]
-            x_coords = [coord[0] for coord in normalized_coords]
-            y_coords = [coord[1] for coord in normalized_coords]
+        
+        if df.empty:
+            self._update_layout(fig, title + ' Locations')
+            return fig
+        
+        # Préparer les listes pour les coordonnées et les informations de survol
+        x_coords = []
+        y_coords = []
+        hover_texts = []
+        colors = []
+        
+        # Normaliser et ajuster les coordonnées pour chaque point
+        for _, row in df.iterrows():
+            # Normaliser les coordonnées
+            x, y = self._normalize_coordinates(row['X'], row['Y'])
             
-            # Créer une seule trace avec tous les points
-            fig.add_trace(go.Scatter(
-                x=x_coords,
-                y=y_coords,
-                mode='markers',
-                marker=dict(
-                    size=8,
-                    color=df['Half'].map({1: 'yellow', 0: 'green'}),
-                    opacity=0.7
-                ),
-                text=df['Player1 Name'] + '<br>Half: ' + df['Half'].astype(str) +
-                    '<br>Time: ' + df['Time'].astype(str) +
-                    '<br>Event: ' + df['Event Name'],
-                hoverinfo='text'
-            ))
+            # Inverser les coordonnées si l'événement est en deuxième mi-temps
+            if row['Half'] == 1:
+                # Inversion par rapport au centre du terrain
+                x = 100 - x
+                y = 100 - y
+            
+            # Ajouter aux listes
+            x_coords.append(x)
+            y_coords.append(y)
+            hover_texts.append(
+                f"{row['Player1 Name']}<br>Half: {row['Half']}<br>Time: {row['Time']}<br>Event: {row['Event Name']}"
+            )
+            colors.append('red' if row['Player1 Team'] == teams[1] else 'green')
+        
+        # Créer une seule trace avec tous les points
+        fig.add_trace(go.Scatter(
+            x=x_coords,
+            y=y_coords,
+            mode='markers',
+            marker=dict(
+                size=8,
+                color=colors,
+                opacity=0.7
+            ),
+            text=hover_texts,
+            hoverinfo='text',
+        ))
+        
         self._update_layout(fig, title + ' Locations')
         return fig
 
@@ -149,5 +198,6 @@ class PitchVisualizer:
             width=800,
             height=600,
             plot_bgcolor='green',
-            paper_bgcolor='white'
+            paper_bgcolor='white',
+            showlegend=False
         )
