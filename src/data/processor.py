@@ -213,11 +213,10 @@ class DataProcessor:
         
         for team in teams:
             filtered_data = data[data['Player1 Team'] == team]['Player1 Name'].unique()
-            result[team] = list(filtered_data)  # Ensure lists for consistent DataFrame creation
+            result[team] = list(filtered_data)
         
         players_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in result.items()]))
         
         return players_df
-
 
 
