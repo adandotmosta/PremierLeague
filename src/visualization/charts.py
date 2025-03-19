@@ -44,7 +44,7 @@ class ChartCreator:
             values = [stats_data[team][metric] for team in teams]
             
             # Pour Successful Pass Rate, ne pas normaliser (déjà un pourcentage)
-            if metric == 'Successful Pass Rate':
+            if metric == 'Successful_Pass_Rate':
                 normalized_values = [val / 100 * 50 for val in values]  # Normaliser à 50% de la largeur totale
             else:
                 # Utiliser le maximum saisonnier correspondant à cette métrique
@@ -54,7 +54,7 @@ class ChartCreator:
             # Créer une trace pour chaque équipe et métrique
             for idx, (team, value, norm_value) in enumerate(zip(teams, values, normalized_values)):
                 # Formater le texte différemment pour les pourcentages
-                if metric == 'Successful Pass Rate':
+                if metric == 'Successful_Pass_Rate':
                     text = f"{value:.1f}%"
                 else:
                     text = f"{value:.1f}"
