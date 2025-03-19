@@ -2,7 +2,8 @@ import streamlit as st
 from src.data.loader import DataLoader
 from src.data.processor import DataProcessor
 from src.visualization.pitch import PitchVisualizer  
-from src.visualization.charts import ChartCreator    
+from src.visualization.charts import ChartCreator   
+from src.data.playersLoader import PlayerLoader 
 
 # Configuration de la page
 st.set_page_config(page_title="Match Analysis", layout="wide")
@@ -11,7 +12,9 @@ st.title("Team Performance Analysis")
 # Initialisation des classes
 EVENTS_PATH = "Events"
 LOGOS_PATH = "Logos"
+PLAYERS_PATH = "../EPL 2011-12/Players"
 loader = DataLoader(EVENTS_PATH, LOGOS_PATH)
+players_loader = PlayerLoader(PLAYERS_PATH)
 processor = DataProcessor()
 
 try:
@@ -200,7 +203,7 @@ try:
                 df, selected_players, events_type,
                 selected_minute
             )    
-            pitch_plot = pitch_viz.create_point_plot(filtered_events, data_choice, teams)
+            pitch_plot = pitch_viz.creat_heat_map(filtered_events, data_choice)
     
         st.plotly_chart(pitch_plot, use_container_width=True)
 
