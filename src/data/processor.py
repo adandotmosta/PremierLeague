@@ -6,7 +6,6 @@ from dataclasses import dataclass
 class MatchStats:
     shots: int
     passes: int
-    possession_loss: int
     successful_passes: int
     saves : int
     score : int
@@ -19,7 +18,6 @@ class MatchStats:
         return {
             "shots": self.shots,
             "passes": self.passes,
-            "possession_loss": self.possession_loss,
             "successful_passes_rate": self.successful_passes_rate,
             "saves" : self.saves,
             "score" : self.score
@@ -108,7 +106,6 @@ class DataProcessor:
             team: MatchStats(
                 shots=self.calculate_shots(data, team),
                 passes=self.calculate_passes(data, team),
-                possession_loss=self.calculate_possession_loss(data, team),
                 successful_passes=self.calculate_successful_passes(data, team),
                 saves=self.calculate_saves(data, team),
                 score = self.calculate_final_score(data, team)
@@ -216,7 +213,7 @@ class DataProcessor:
         
         for team in teams:
             filtered_data = data[data['Player1 Team'] == team]['Player1 Name'].unique()
-            result[team] = list(filtered_data)  # Ensure lists for consistent DataFrame creation
+            result[team] = list(filtered_data)
         
         players_df = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in result.items()]))
         
@@ -224,12 +221,9 @@ class DataProcessor:
 
 
 
-
-
-
     def get_goal_scorers(self, players: pd.DataFrame, match: pd.DataFrame, team: str) -> List[tuple]:
         """Récupère les noms des joueurs ayant marqué un but et le nombre de buts."""
-        
+
         # Filter players who scored goals for the given team
         scorers = players[
             (players["Goals"] > 0) & 
@@ -255,7 +249,7 @@ class DataProcessor:
             returned_tuples.append((scorer[0], minutes))
 
         returned_tuples.sort(key=lambda x: x[1][0])
-        
+
         return returned_tuples
 
 
@@ -281,5 +275,20 @@ class DataProcessor:
         ][["Player1 Name", "Time"]].values.tolist()
 
 
+    def get_player_names(self,team):
+        players_df = pd.read_csv("players_performance.csv")
+
+
+        return players_df[(players_df["Team"] == team) & (players_df["DP Passes Made"] <= 0.3)]["Player Name"].unique().tolist()
+
+    def get_player_metrics(self,player_name):
+        players_df = pd.read_csv("players_performance.csv")
+        return players_df[(players_df["Player Name"] == player_name)]
+
+
+
+
+
+    
 
 

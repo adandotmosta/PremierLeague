@@ -1,9 +1,9 @@
 import streamlit as st
 from src.data.loader import DataLoader
 from src.data.processor import DataProcessor
-from src.data.playersLoader import PlayerLoader
 from src.visualization.pitch import PitchVisualizer  
-from src.visualization.charts import ChartCreator    
+from src.visualization.charts import ChartCreator   
+from src.data.playersLoader import PlayerLoader 
 
 # Configuration de la page
 st.set_page_config(page_title="Match Analysis", layout="wide")
@@ -13,26 +13,29 @@ st.title("Team Performance Analysis")
 EVENTS_PATH = "../EPL 2011-12/Events"
 LOGOS_PATH = "../EPL 2011-12/Logos"
 PLAYERS_PATH = "../EPL 2011-12/Players"
-events_loader = DataLoader(EVENTS_PATH, LOGOS_PATH)
+loader = DataLoader(EVENTS_PATH, LOGOS_PATH)
 players_loader = PlayerLoader(PLAYERS_PATH)
 processor = DataProcessor()
 
 try:
     # Chargement des matches disponibles
-    match_files = events_loader.load_match_files()
+    match_files = loader.load_match_files()
     
     # Sélection du match
     selected_match = st.selectbox(
         "Select Match",
-        match_files
+        match_files,
+        format_func=lambda x: x.replace('.csv', '')
     )
     
     # Chargement des données du match sélectionné
-    df = events_loader.load_match_data(selected_match + "- Events.csv")
-    df_players = players_loader.load_player_data(selected_match + "- Players.csv")
-    teams = events_loader.get_teams(df)
-    logo_team1 = events_loader.load_logos(teams[0])
-    logo_team2 = events_loader.load_logos(teams[1])
+    print(selected_match)
+    df = loader.load_match_data(selected_match)
+    teams = loader.get_teams(df)
+    logo_team1 = loader.load_logos(teams[0])
+    logo_team2 = loader.load_logos(teams[1])
+
+    df_players = players_loader.load_player_data(selected_match.replace("- Events.csv","- Players.csv"))
     
 
     # Calcul des statistiques
@@ -101,6 +104,7 @@ try:
     chart_creator = ChartCreator()
     stats_chart = chart_creator.create_centered_bar_chart(stats_data)
     st.plotly_chart(stats_chart, use_container_width=True)
+
 
     # Get goal scorers for each team
     goal_scorers_team1 = processor.get_goal_scorers(df_players, df, teams[0])
@@ -252,7 +256,7 @@ try:
                 df, selected_players, events_type,
                 selected_minute
             )    
-            pitch_plot = pitch_viz.create_point_plot(filtered_events, data_choice, teams)
+            pitch_plot = pitch_viz.creat_heat_map(filtered_events, data_choice)
     
         st.plotly_chart(pitch_plot, use_container_width=True)
 

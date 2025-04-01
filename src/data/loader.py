@@ -11,8 +11,8 @@ class DataLoader:
     def load_match_files(self) -> List[str]:
         """Liste tous les fichiers CSV dans le répertoire des événements."""
         return sorted([
-            f.replace("- Players.csv", "").replace("- Events.csv", "") 
-            for f in os.listdir(self.events_directory) if f.endswith('.csv')
+            f for f in os.listdir(self.events_directory) 
+            if f.endswith('.csv')
         ])
     
     def load_logos(self, team_name):
@@ -44,5 +44,28 @@ class DataLoader:
         """Récupère la liste des équipes du match."""
         teams = [data['Team A'][0], data['Team B'][0]]
         return teams
-    
-    
+
+
+
+    def get_angle_xg(self) -> pd.DataFrame:
+        """Calcule l'angle de tir et le xG pour chaque événement."""
+        df_shots = pd.read_csv("shots.csv")
+        df_shots["TotalShots"] = 1
+        df_shots_aggregated_by_player = df_shots.groupby(["playerName", "playerTeam"]).agg({"xG Score": "sum", "Angle": "mean","TotalShots" :"sum"}).reset_index()
+        top_scorers = ["Robin VAN PERSIE", "Wayne ROONEY", "Sergio AGUERO", "Clint DEMPSEY", "Emmanuel ADEBAYOR", "Demba BA", "Yakubu AYEGBENI", "Grant HOLT", "Edin DZEKO", "Mario BALOTELLI"]
+        df_shots_aggregated_by_player_shots = df_shots_aggregated_by_player[df_shots_aggregated_by_player["TotalShots"] >50]
+        df_shots_aggregated_by_player_shots["color"] = df_shots_aggregated_by_player["playerName"].apply(
+        lambda x: "red" if x in top_scorers else "blue"
+)
+        return df_shots_aggregated_by_player_shots
+    def get_angle_bins(self) :
+        df_shots_aggregated_by_player_shots = self.get_angle_xg()
+        df_shots_aggregated_by_player_shots["AngleBins"] = pd.cut(df_shots_aggregated_by_player_shots["Angle"], bins=20)
+        df_shots_aggregated_by_bins = df_shots_aggregated_by_player_shots.groupby("AngleBins") \
+            .agg({"xG Score": "mean"}) \
+            .reset_index()
+
+        # Rename column for clarity
+        df_shots_aggregated_by_bins.rename(columns={"xG Score": "Total_xG"}, inplace=True)
+
+        return df_shots_aggregated_by_bins

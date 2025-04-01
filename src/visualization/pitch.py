@@ -1,5 +1,6 @@
 import plotly.graph_objects as go
 import pandas as pd
+import math
 import numpy as np
 from typing import Dict
 
@@ -176,6 +177,86 @@ class PitchVisualizer:
         
         self._update_layout(fig, title + ' Locations')
         return fig
+    
+    def creat_heat_map(self, df: pd.DataFrame, title: str):
+        fig = self._create_base_pitch()
+        
+        # Créer une matrice qui correspond précisément aux dimensions du terrain (100x100)
+        mat = np.zeros((100, 100))
+        
+        for _, row in df.iterrows():
+            # Normaliser les coordonnées
+            x, y = self._normalize_coordinates(row['X'], row['Y'])
+            
+            # Inverser les coordonnées si l'événement est en deuxième mi-temps
+            if row['Half'] == 1:
+                x = 100 - x
+                y = 100 - y
+            
+            # Convertir en entiers pour indexer la matrice
+            x_idx = int(x)
+            y_idx = int(y)
+            
+            # Ajouter une distribution gaussienne centrée sur ce point
+            # Utiliser des indices directs de la matrice plutôt que d'appliquer des décalages
+            self._add_gaussian(mat, x_idx, y_idx, sigma=2.0)
+        
+        # Ajout de la visualisation de la heatmap
+        heatmap = go.Heatmap(
+            z=mat.T,  # Transposée pour correspondre aux coordonnées du terrain
+            x=np.linspace(0, 100, 100),  # Utiliser des coordonnées qui correspondent précisément au terrain
+            y=np.linspace(0, 100, 100),
+            colorscale='Jet',
+            showscale=True,
+            opacity=0.7,
+            hoverinfo='skip',
+            zmin=0.1,  # Valeur minimale pour être visible (rend les 0 transparents)
+            zauto=False,
+            xgap=0,
+            ygap=0
+        )
+        
+        fig.add_trace(heatmap)
+        self._update_layout(fig, title + ' heatmap')
+        return fig
+
+    def _add_gaussian(self, M, x_center, y_center, sigma=100):
+        """
+        Ajoute une distribution gaussienne 2D centrée sur (x_center, y_center)
+        
+        Paramètres:
+        - M: la matrice 100x100 sur laquelle ajouter la gaussienne
+        - x_center, y_center: coordonnées du centre de la gaussienne (déjà normalisées)
+        - sigma: écart-type de la gaussienne
+        """
+        # Vérifier que le centre est dans les limites
+        if not (0 <= x_center < 100 and 0 <= y_center < 100):
+            return M
+        
+        # Définir la zone d'influence (3*sigma couvre ~99.7% de la distribution)
+        kernel_size = int(3 * sigma)
+        
+        # Limites de la région à mettre à jour
+        x_min = max(0, x_center - kernel_size)
+        x_max = min(99, x_center + kernel_size)
+        y_min = max(0, y_center - kernel_size)
+        y_max = min(99, y_center + kernel_size)
+        
+        # Appliquer la gaussienne
+        for i in range(x_min, x_max + 1):
+            for j in range(y_min, y_max + 1):
+                # Distance au carré depuis le centre
+                dx = i - x_center
+                dy = j - y_center
+                distance_squared = dx*dx + dy*dy
+                
+                # Formule de la gaussienne 2D
+                factor = np.exp(-distance_squared / (2 * sigma * sigma))
+                
+                # Ajouter cette valeur
+                M[i, j] += factor
+        
+        return M
 
     def _update_layout(self, fig: go.Figure, title: str):
         """Met à jour la mise en page de la figure."""
