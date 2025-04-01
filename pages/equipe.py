@@ -49,8 +49,10 @@ try :
         st.image(club_dict[selected_team_name], caption=selected_team_name, width=150)
 
     
-    scorers, wins = players_loader.get_stats_per_team(selected_team_name)
+    scorers, wins,_ = players_loader.get_stats_per_team(selected_team_name)
     st.write(scorers)
+
+    
 
 
 
@@ -109,6 +111,10 @@ try :
 
     # Show the plot in Streamlit
     st.plotly_chart(fig)
+
+
+    # display the top3 players played the most games
+     
 
 
 
