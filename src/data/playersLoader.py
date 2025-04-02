@@ -2,7 +2,7 @@ from typing import List
 import os
 import pandas as pd
 import cv2
-
+import re
 
 class PlayerLoader:
     def __init__(self, players_directory: str):
@@ -62,24 +62,39 @@ class PlayerLoader:
         """Récupère les statistiques d'une équipe spécifique, y compris les buts, le score xG et les minutes jouées."""
         players = {}
         wins = 0
-        a_domicile = 0
+        draws = 0
+        looses = 0
+        a_domicile_wins = 0
+        a_domicile_draws = 0
+        a_domicile_looses = 0
         total_xg = 0  # Variable to accumulate total xG
         for match in self.load_match_files():
             if team in match:
                 data = self.load_player_data(match + "- Players.csv")
                 team_data = data[data['Team'] == team]
-                home_team = match.split(" v ")[0].split()[-1]  # Get the last word before "v"
-                away_team = match.split(" v ")[1].split()[0]  # Get the first word after "v"
+
+                matchi = re.search(r"\d{2}\.\d{2}\.\d{2} (.*?) v (.*?) - Players\.csv", match + "- Players.csv")
+                if matchi:
+                    home_team, away_team = matchi.groups()
+
 
                 # Increment a_domicile if the team is the home team
 
                 
                 # Count wins
-                if team_data.iloc[0]['Result'] == 'W':
+                if team_data.iloc[0]['Result'] == 'D':
+                    draws += 1
+                    if home_team == team:
+                        a_domicile_draws += 1
+                elif team_data.iloc[0]['Result'] == 'L':
+                    looses += 1
+                    if home_team == team:
+                        a_domicile_looses += 1
+                else :
                     wins += 1
 
                     if home_team == team:
-                        a_domicile += 1
+                        a_domicile_wins += 1
                 
                 # Iterate through the players' data
                 for _, player in team_data.iterrows():
@@ -107,7 +122,16 @@ class PlayerLoader:
         player_stats = player_stats.sort_values(by='Goals', ascending=False)
         
         # Return both player stats and the total wins, total xG
-        return player_stats, wins, total_xg,a_domicile
+        return player_stats,total_xg, wins,draws,looses,a_domicile_wins,a_domicile_draws,a_domicile_looses
+    
+    def get_top_performers(self,top_n: int):
+        players_not_scaled = pd.read_csv("players_not_scaled.csv")
+        players_scaled = pd.read_csv("players.csv")
+        top_scorers = players_not_scaled.sort_values(by='Goals', ascending=False).head(top_n)
+        top_passers = players_not_scaled.sort_values(by='Pass', ascending=False).head(top_n)
+        top_shooters = players_not_scaled.sort_values(by='Shot', ascending=False).head(top_n)
+        top_defensers = players_scaled.sort_values(by='IPD', ascending=False).head(top_n)
+        return top_scorers,top_passers,top_shooters,top_defensers
 
 
     def evolutionary_stat(self, player_name, team_name):
@@ -187,10 +211,23 @@ class PlayerLoader:
         elif aggregation == "match":
             # Return the stats without aggregation
             return df
+    
+
+    def goalkeepers_names(self):
+        players = pd.read_csv("players.csv")
+        goalkeepers = players[players['Goalkeeper'] == 'Yes']
+        return goalkeepers['Player Name'].values
 
 
 
+    def goalkeeper_performance(self, gk_name):
+        players = pd.read_csv("players.csv")
+        gks = players[players['Player Name'] == gk_name]
 
+        if gks.empty:
+            return None  # No player found
+
+        return gks.iloc[0]  # Return the first row as a Series
 
 
 

@@ -282,8 +282,17 @@ class DataProcessor:
         return players_df[(players_df["Team"] == team) & (players_df["DP Passes Made"] <= 0.3)]["Player Name"].unique().tolist()
 
     def get_player_metrics(self,player_name):
-        players_df = pd.read_csv("players_performance.csv")
+        players_df = pd.read_csv("players.csv")
         return players_df[(players_df["Player Name"] == player_name)]
+
+
+    def get_shots_cords(self,player_name,match_name) :
+        shots_cords = pd.read_csv("Shots_cords.csv")
+        match_name = match_name.replace(" - Events.csv", "")
+        print(match_name)
+        player_shots_cords = shots_cords[(shots_cords["Player1 Name"]==player_name) & (shots_cords["Match Name"]==match_name )].loc[:,["X","Y","Half"]]
+        return player_shots_cords
+
 
 
 

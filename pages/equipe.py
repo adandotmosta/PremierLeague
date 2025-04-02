@@ -9,48 +9,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import seaborn as sns
 from src.data.processor import DataProcessor
-    
 
-
-def plot_radar_chart(player_row):
-    """
-    Génère un radar chart et l'affiche dans Streamlit.
-    
-    Parameters:
-        player_row (pd.Series): Ligne contenant les données normalisées du joueur.
-    """
-    if player_row is None or player_row.empty:
-        st.error("Données du joueur introuvables.")
-        return
-
-    # Sélection des attributs pertinents (déjà normalisés)
-    selected_attributes = [
-        "Goals", "DP Passes Made", "Cr Crosses Made",
-        "CA Regains", "HP Regains",
-        "ST Involvement", "BU Involvement", "Ma Involvement"
-    ]
-
-    # Extraction des valeurs du joueur
-    player_values = player_row[selected_attributes].values.flatten()
-
-    # Création des angles pour le radar chart
-    angles = np.linspace(0, 2 * np.pi, len(selected_attributes), endpoint=False).tolist()
-    values = np.concatenate((player_values, [player_values[0]]))  # Ferme le polygone
-    angles += angles[:1]
-
-    fig, ax = plt.subplots(figsize=(7, 7), subplot_kw=dict(polar=True))
-    ax.fill(angles, values, color='blue', alpha=0.4)
-    ax.plot(angles, values, color='blue', linewidth=2)
-
-    # Ajout des labels
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(selected_attributes, fontsize=10, rotation=30, ha='right')
-    ax.set_yticklabels([])  # Masquer les valeurs des axes
+from src.visualization.pitch import PitchVisualizer  
 
 
 
-    # Affichage dans Streamlit
-    st.pyplot(fig)
 
 # Initialisation des classes
 EVENTS_PATH = "../EPL 2011-12/Events"
@@ -60,6 +23,7 @@ PLAYERS_PATH = "../EPL 2011-12/Players"
 
 events_loader = DataLoader(EVENTS_PATH, LOGOS_PATH)
 players_loader = PlayerLoader(PLAYERS_PATH)
+
 
 processor = DataProcessor()
 
@@ -94,7 +58,7 @@ try :
         st.image(club_dict[selected_team_name], caption=selected_team_name, width=150)
 
     
-    scorers, wins,_,a_domicile = players_loader.get_stats_per_team(selected_team_name)
+    scorers,_,wins,draws,losses,a_domicile_wins,a_domicile_draws,a_domicile_looses = players_loader.get_stats_per_team(selected_team_name)
     top3 = scorers.head(3)
 
     # Ensure there are at least 3 players
@@ -180,10 +144,9 @@ try :
 
 
     total_games = 38
-    losses = total_games - wins
-    print(a_domicile)
+    print(a_domicile_wins)
     print(wins)
-    away_wins = wins - a_domicile
+    away_wins = wins - a_domicile_wins
 
         # Prepare the data for the chart
     team_stats = {
@@ -239,7 +202,7 @@ try :
     st.plotly_chart(fig)
 
     # Prepare the data for the new chart
-    home_wins = a_domicile
+    home_wins = a_domicile_wins
 
     team_home_away_stats = {
         "Home Wins": home_wins,
@@ -295,6 +258,58 @@ try :
     st.plotly_chart(fig_home_away)
 
 
+
+
+
+
+    # Calcul des statistiques pour les matchs à l'extérieur
+    en_exterieur_losses = losses - a_domicile_looses
+    en_exterieur_wins = wins - a_domicile_wins
+    en_exterieur_draws = draws - a_domicile_draws
+
+    # Création de la figure
+    fig_bar = go.Figure()
+
+    # Ajout des performances à domicile
+    fig_bar.add_trace(go.Bar(
+        name="À domicile",
+        x=["Victoires", "Matchs nuls", "Défaites"],  # Catégories
+        y=[a_domicile_wins, a_domicile_draws, a_domicile_looses],  # Valeurs à domicile
+        marker=dict(color="yellow"),  # Vert pour les matchs à domicile
+        text=[a_domicile_wins, a_domicile_draws, a_domicile_looses],  # Affichage des valeurs
+        textposition="outside"
+    ))
+
+    # Ajout des performances à l'extérieur
+    fig_bar.add_trace(go.Bar(
+        name="À l'extérieur",
+        x=["Victoires", "Matchs nuls", "Défaites"],  # Catégories
+        y=[en_exterieur_wins, en_exterieur_draws, en_exterieur_losses],  # Valeurs à l'extérieur
+        marker=dict(color="black"),  # Rouge pour les matchs à l'extérieur
+        text=[en_exterieur_wins, en_exterieur_draws, en_exterieur_losses],  # Affichage des valeurs
+        textposition="outside"
+    ))
+
+    # Mise en page pour une meilleure visualisation
+    fig_bar.update_layout(
+        title=f"{selected_team_name}: Comparaison des performances (Domicile vs Extérieur)",
+        title_x=0.5,  # Centrer le titre
+        xaxis_title="Résultats des matchs",
+        yaxis_title="Nombre de matchs",
+        barmode="group",  # Histogramme groupé
+        height=600,
+        width=800
+    )
+
+    # Affichage du graphique dans Streamlit
+    st.plotly_chart(fig_bar)
+
+
+
+
+    # Update the layout
+
+
     # display the top3 players played the most games
 
     fig = px.pie(scorers, names="Player", values="Goals", 
@@ -304,56 +319,170 @@ try :
 
 
 
+    if "compare_mode" not in st.session_state:
+        st.session_state.compare_mode = False
+
+    def plot_radar_chart(player_row, player_name, second_player_row=None, second_player_name=None):
+        """
+        Génère un radar chart pour un joueur et optionnellement un second en comparaison.
+
+        Parameters:
+            player_row (pd.Series): Données du premier joueur.
+            player_name (str): Nom du premier joueur.
+            second_player_row (pd.Series, optional): Données du deuxième joueur.
+            second_player_name (str, optional): Nom du deuxième joueur.
+        """
+        if player_row is None or player_row.empty:
+            st.error("Données du joueur introuvables.")
+            return
+
+        # Sélection des attributs pertinents (pas de normalisation appliquée)
+        selected_attributes = [
+            "Goals", "Shot", "Pass", "Dribble", "Block",
+            "Foul", "Tackle", "Clearance", "Cross", "Touch"
+        ]
+
+        # Extraction des valeurs du premier joueur
+        player_values = player_row[selected_attributes].values.flatten()
+        angles = np.linspace(0, 2 * np.pi, len(selected_attributes), endpoint=False).tolist()
+        angles += angles[:1]  # Fermer le polygone
+        values1 = np.concatenate((player_values, [player_values[0]]))
+
+        # Création du radar chart
+        fig, ax = plt.subplots(figsize=(7, 7), subplot_kw={"polar": True})
+
+        # Tracer le joueur 1 (en bleu)
+        ax.fill(angles, values1, color='blue', alpha=0.3, label=player_name)
+        ax.plot(angles, values1, color='blue', linewidth=2)
+
+        # Vérifier si un deuxième joueur est sélectionné pour la comparaison
+        if second_player_row is not None and not second_player_row.empty:
+            second_player_values = second_player_row[selected_attributes].values.flatten()
+            values2 = np.concatenate((second_player_values, [second_player_values[0]]))
+
+            # Tracer le joueur 2 (en rouge)
+            ax.fill(angles, values2, color='red', alpha=0.3, label=second_player_name)
+            ax.plot(angles, values2, color='red', linewidth=2)
+
+        # Ajouter les labels
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(selected_attributes, fontsize=10, rotation=30, ha='right')
+        ax.set_yticklabels([])  # Masquer les valeurs des axes
+
+        # Ajouter une légende
+        ax.legend(loc='upper right', bbox_to_anchor=(1.1, 1.1))
+
+        # Affichage dans Streamlit
+        st.pyplot(fig)
 
 
-    # prendre la liste des joueurs
+
     players = processor.get_player_names(selected_team_name)
-    selected_player = st.selectbox("Select a player", players)
-    player_stats = processor.get_player_metrics(selected_player)
-    plot_radar_chart(player_stats)
+    selected_player1 = st.selectbox("Select a player", players, key="first_player")
+
+    # Chargement des performances du premier joueur
+    player_stats1 = processor.get_player_metrics(selected_player1)
+
+    # Choix de mode: solo ou comparaison
+    compare_option = st.radio("Mode d'affichage", ["Solo", "Comparer"])
+
+    if compare_option == "Comparer":
+        st.session_state.compare_mode = True
+        selected_player2 = st.selectbox("Select second player", players, key="second_player")
+        player_stats2 = processor.get_player_metrics(selected_player2)
+        plot_radar_chart(player_stats1, selected_player1, player_stats2, selected_player2)
+    else:
+        st.session_state.compare_mode = False
+        plot_radar_chart(player_stats1, selected_player1)
 
     # chekbox, pour afficher si par match ou par mois
     # si par match, on affiche le nombre de buts par match
     # si par mois, on affiche le nombre de buts par mois
     # Display the aggregation options
-    aggregation = st.selectbox("Aggregation", ["month", "match"])
+# Utilisation de boutons pour la sélection de l'agrégation
+    aggregation = None
 
-    # Retrieve the evolutionary statistics based on the selected aggregation type
-    evolutionary_stat = players_loader.evolution_by_month_match(selected_player, selected_team_name, aggregation=aggregation)
+    col1, col2 = st.columns(2)
 
-    # Display the table if data is available
-    st.table(evolutionary_stat)
+    with col1:
+        if st.button("Month"):
+            aggregation = "month"
 
-    if evolutionary_stat.empty:
-        st.write("No data available for the player.")
-    else:
-        # Convert "month" to string for plotting
-        if aggregation == "month":
-            evolutionary_stat['match'] = evolutionary_stat['month'].astype(str)  # Ensure 'match' is a string (month)
+    with col2:
+        if st.button("Match"):
+            aggregation = "match"
+
+    # Si l'agrégation est sélectionnée, récupère les statistiques
+
+    if aggregation:
+        evolutionary_stat = players_loader.evolution_by_month_match(selected_player1, selected_team_name, aggregation=aggregation)
+
+
+
+        if evolutionary_stat.empty:
+            st.write("No data available for the player.")
         else:
-            evolutionary_stat['match'] = evolutionary_stat['Match'].astype(str)  # If aggregation is "match", use 'match'
+            # Convertir "month" en chaîne de caractères pour l'affichage
+            if aggregation == "month":
+                evolutionary_stat['match'] = evolutionary_stat['month'].astype(str)  # Assurez-vous que 'month' est une chaîne
+            else:
+                evolutionary_stat['match'] = evolutionary_stat['Match'].astype(str)  # Si l'agrégation est "match", utilisez 'match'
 
-        # Add a column for the cumulative sum of goals
-        evolutionary_stat['Cumulative Goals'] = evolutionary_stat['Goals']
+            # Ajouter une colonne pour la somme cumulative des buts
+            evolutionary_stat['Cumulative Goals'] = evolutionary_stat['Goals']
 
-        # Display the title for the graph
-        st.markdown("<h3 style='text-align: center; font-weight: bold;'>Evolution of Cumulative Goals</h3>", unsafe_allow_html=True)
-        
-        # Plot the cumulative goals evolution using Plotly
-        fig = px.line(evolutionary_stat, x='match', y='Cumulative Goals', 
-                    title="Cumulative Goals Over Time", markers=True)
+            # Afficher le titre pour le graphique
+            st.markdown("<h3 style='text-align: center; font-weight: bold;'>Evolution of Cumulative Goals</h3>", unsafe_allow_html=True)
+            
+            # Tracer l'évolution des buts cumulés avec Plotly
+            fig = px.line(evolutionary_stat, x='match', y='Cumulative Goals', 
+                        title="Cumulative Goals Over Time", markers=True)
 
-        # Update the layout of the graph
-        fig.update_layout(xaxis_title="match", yaxis_title="Cumulative Goals")
-        
-        # Display the plot
-        st.plotly_chart(fig)
+            # Mettre à jour la disposition du graphique
+            fig.update_layout(xaxis_title="match", yaxis_title="Cumulative Goals")
+            
+            # Afficher le graphique
+            st.plotly_chart(fig)
+    else:
+        st.write("Selectionner Un mode Pour visualiser l'evolution selon les buts (Month or Match).")
+
+# Assuming the class is saved in this file
+
+    # Sample data - Replace this with your actual data
+
+
+    # Create a DataFrame from the data
+    # make slider pour les matches
+    match_files = events_loader.load_match_files()
+    extension = " - Events.csv"
+    matches = [file.replace(extension,'') for file in match_files if selected_team_name in file]
 
 
 
+    selected_file = st.select_slider("Sélectionnez un match", options=matches)
+    
+    # Get the selected match based on the slider's index
+
+    df = processor.get_shots_cords(selected_player1,selected_file + extension)
 
 
 
+    # Initialize the pitch visualizer
+    pitch_visualizer = PitchVisualizer()
+
+    # Set up the Streamlit app
+    st.title('Football Shot Locations Heatmap')
+    st.write('This app visualizes shot locations on a football pitch.')
+
+    # Create and display the heatmap
+    fig = pitch_visualizer.creat_heat_map(df, 'Shot Locations')
+
+    # Display the plotly chart using Streamlit
+    st.plotly_chart(fig)
+
+
+
+#evolution par match
 
 
 except Exception as e:
