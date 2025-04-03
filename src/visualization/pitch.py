@@ -279,5 +279,6 @@ class PitchVisualizer:
             width=800,
             height=600,
             plot_bgcolor='green',
-            paper_bgcolor='white'
+            paper_bgcolor='white',
+            showlegend=False
         )

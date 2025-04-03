@@ -286,12 +286,53 @@ class DataProcessor:
         return players_df[(players_df["Player Name"] == player_name)]
 
 
-    def get_shots_cords(self,player_name,match_name) :
-        shots_cords = pd.read_csv("Shots_cords.csv")
-        match_name = match_name.replace(" - Events.csv", "")
-        print(match_name)
-        player_shots_cords = shots_cords[(shots_cords["Player1 Name"]==player_name) & (shots_cords["Match Name"]==match_name )].loc[:,["X","Y","Half"]]
+    def get_shots_cords(self,player_name,by="match",match_name="") :
+        if by=="match" :
+            shots_cords = pd.read_csv("Shots_cords.csv")
+            match_name = match_name.replace(" - Events.csv", "")
+            print(match_name)
+            player_shots_cords = shots_cords[(shots_cords["Player1 Name"]==player_name) & (shots_cords["Match Name"]==match_name )].loc[:,["X","Y","Half"]]
+        else : 
+            shots_cords = pd.read_csv("Shots_cords.csv")
+            player_shots_cords = shots_cords[(shots_cords["Player1 Name"]==player_name)].loc[:,["X","Y","Half"]]
         return player_shots_cords
+    
+    def get_touch_cords(self,player_name,by="match",match_name="") :
+        if by=="match" :
+            touch_cords = pd.read_csv("Touch_cords.csv")
+            match_name = match_name.replace(" - Events.csv", "")
+            player_touch_cords = touch_cords[(touch_cords["Player1 Name"]==player_name) & (touch_cords["Match Name"]==match_name )].loc[:,["X","Y","Half"]]
+        else : 
+            touch_cords = pd.read_csv("Touch_cords.csv")
+            player_touch_cords = touch_cords[(touch_cords["Player1 Name"]==player_name)].loc[:,["X","Y","Half"]]
+        return player_touch_cords
+    
+    def get_stats_by_player(self,player_name):
+        players_df = pd.read_csv("players_not_scaled.csv")
+        # retourner { goals, shots, passed, yellow cards, red cards, fouls}
+        player_stats = players_df[(players_df["Player Name"] == player_name)].loc[:,["Goals","Pass","Cross","Yellow Card","Red Card","Foul"]]
+        return player_stats
+
+
+    def get_top_gks(self, top_n: int = 10):
+        players_df = pd.read_csv("players_not_scaled.csv")
+        gks = players_df[players_df["Goalkeeper"] == "Yes"]
+        gks = gks.sort_values(by=["gk_coef"], ascending=True)
+        gks = gks[gks["Received Goals"] > 10]
+        gks = gks[gks["Offside"]==0]
+        gks = gks[gks["Goal Kick"] >20]
+        gks = gks.head(top_n)
+        # inverser gk_coef a 1/gk_coef
+        gks["gk_coef"] = 1/gks["gk_coef"]
+        gks = gks[["Player Name", "gk_coef","Games Played","Received Goals","Team"]]
+        return gks
+
+    def get_cards(self):
+        players_df = pd.read_csv("players_not_scaled.csv")
+        # sum all the yellow cards and red cards
+        yellow_cards = players_df["Yellow Card"].sum()
+        red_cards = players_df["Red Card"].sum()
+        return yellow_cards, red_cards
 
 
 

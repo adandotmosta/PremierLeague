@@ -6,6 +6,10 @@ class ChartCreator:
     max_shot_this_season = 34
     max_passe_this_season = 928
     max_saves_this_season = 13
+    max_fouls_this_season = 25
+    
+    # Largeur fixe maximum pour chaque type de barre
+    bar_max_width = 100
     
     def __init__(self):
         self.default_width = 700
@@ -14,7 +18,8 @@ class ChartCreator:
         self.max_values = {
             'Shots': self.max_shot_this_season,
             'Passes': self.max_passe_this_season,
-            'Saves': self.max_saves_this_season
+            'Saves': self.max_saves_this_season,
+            'Fouls': self.max_fouls_this_season
         }
     
     def create_centered_bar_chart(self, stats_data: Dict[str, Dict[str, float]]) -> go.Figure:
@@ -22,11 +27,18 @@ class ChartCreator:
         # Préparer les données
         teams = list(stats_data.keys())
         metrics = list(stats_data[teams[0]].keys())
-        metrics.pop()
+        
+        # Nettoyer les métriques si nécessaire
+        if len(metrics) > 2:
+            try:
+                metrics.pop(2)
+                metrics.pop()
+            except IndexError:
+                pass
         
         # Assurons-nous que les métriques sont dans l'ordre souhaité
         ordered_metrics = []
-        for m in ['Shots', 'Passes', 'Saves', 'Successful Pass Rate']:
+        for m in ['Shots', 'Passes', 'Saves', 'Fouls']:
             if m in metrics:
                 ordered_metrics.append(m)
         
@@ -42,33 +54,55 @@ class ChartCreator:
         
         for metric in ordered_metrics:
             values = [stats_data[team][metric] for team in teams]
-            
-            # Pour Successful Pass Rate, ne pas normaliser (déjà un pourcentage)
-            if metric == 'Successful_Pass_Rate':
-                normalized_values = [val / 100 * 50 for val in values]  # Normaliser à 50% de la largeur totale
-            else:
-                # Utiliser le maximum saisonnier correspondant à cette métrique
-                max_season_value = self._get_max_for_metric(metric)
-                normalized_values = self._normalize_values_with_max(values, max_season_value)
+
+            # Utiliser le maximum saisonnier correspondant à cette métrique
+            max_season_value = self._get_max_for_metric(metric)
             
             # Créer une trace pour chaque équipe et métrique
-            for idx, (team, value, norm_value) in enumerate(zip(teams, values, normalized_values)):
-                # Formater le texte différemment pour les pourcentages
-                if metric == 'Successful_Pass_Rate':
-                    text = f"{value:.1f}%"
-                else:
-                    text = f"{value:.1f}"
-                    
+            for idx, (team, value) in enumerate(zip(teams, values)):
+                # Calcul de la proportion (en pourcentage)
+                proportion = value / max_season_value
+                
+                # Valeur active (colorée) et valeur inactive (grisée)
+                active_value = proportion * self.bar_max_width
+                inactive_value = self.bar_max_width - active_value
+                
+                # Direction (négatif pour la première équipe, positif pour la seconde)
+                direction = -1 if idx == 0 else 1
+                
+                # Texte à afficher
+                text = f"{value:.1f}"
+                
+                # Ajouter la partie active (colorée) de la barre
                 fig.add_trace(go.Bar(
                     y=[metric],
-                    x=[-norm_value] if idx == 0 else [norm_value],  # Négatif pour la première équipe
-                    name=team,
+                    x=[direction * active_value],
+                    name=team if metric == ordered_metrics[0] else None,
                     orientation='h',
                     marker=dict(color='green' if idx == 0 else 'red'),
                     text=text,
                     textposition='inside',
-                    showlegend=metric == ordered_metrics[0]  # Montrer la légende seulement pour la première métrique
+                    hoverinfo='text',
+                    showlegend=metric == ordered_metrics[0],  # Montrer la légende seulement pour la première métrique
+                    legendgroup=team,
                 ))
+                
+                # Ajouter la partie inactive (grisée) de la barre
+                if inactive_value > 0:
+                    # Position de départ pour la partie grisée
+                    start_position = direction * active_value
+                    
+                    fig.add_trace(go.Bar(
+                        y=[metric],
+                        x=[direction * inactive_value],
+                        base=start_position,  # Commence là où se termine la partie active
+                        name=f"{team} (inactive)" if metric == ordered_metrics[0] else None,
+                        orientation='h',
+                        marker=dict(color='lightgrey', opacity=0.5),
+                        hoverinfo='none',
+                        showlegend=False,
+                        legendgroup=team,
+                    ))
         
         self._update_centered_layout(fig, teams)
         return fig
@@ -80,31 +114,27 @@ class ChartCreator:
         
         if 'shot' in lower_metric:
             return self.max_shot_this_season
-        elif 'pass' in lower_metric and 'rate' not in lower_metric:
+        elif 'pass' in lower_metric:
             return self.max_passe_this_season
         elif 'save' in lower_metric:
             return self.max_saves_this_season
-        elif 'rate' in lower_metric:
-            return 100.0  # Pour les pourcentages
+        elif 'foul' in lower_metric:
+            return self.max_fouls_this_season
         else:
             # Valeur par défaut si la métrique ne correspond à aucune des catégories connues
             return 100.0
     
-    def _normalize_values_with_max(self, values: List[float], max_season_value: float, total_width: int = 100) -> List[float]:
-        """Normalise les valeurs en fonction du maximum saisonnier."""
-        # Normaliser par rapport au maximum saisonnier plutôt qu'au maximum local
-        return [val / max_season_value * (total_width / 2) for val in values]
-    
     def _update_centered_layout(self, fig: go.Figure, teams: List[str]):
         """Met à jour la mise en page du graphique centré."""
         fig.update_layout(
-            title="Team Statistics Comparison",
+            title="Statistiques des équipes",
             yaxis_title=None,
             xaxis=dict(
                 zeroline=True,
                 zerolinecolor="black",
                 showticklabels=False,
                 zerolinewidth=2,
+                range=[-self.bar_max_width * 1.1, self.bar_max_width * 1.1],  # S'assurer que l'axe X couvre l'ensemble des barres
             ),
             yaxis=dict(
                 showgrid=False,
